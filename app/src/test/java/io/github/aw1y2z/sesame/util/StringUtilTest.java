@@ -62,8 +62,11 @@ public class StringUtilTest {
         assertNull(StringUtil.stripCountSuffix(null));
         assertEquals("XX", StringUtil.stripCountSuffix("XX(2/10)"));
         assertEquals("XX", StringUtil.stripCountSuffix("XX"));
+        // 后缀不在末尾时不处理
         assertEquals("XX(2/10)Y", StringUtil.stripCountSuffix("XX(2/10)Y"));
-        assertEquals("XX(2/10)", StringUtil.stripCountSuffix("XX(2/10)"));
+        assertEquals("XX(2)", StringUtil.stripCountSuffix("XX(2)"));
+        // 结尾就是次数后缀（标题本身没有中文名）时会被整体剥掉
+        assertEquals("", StringUtil.stripCountSuffix("(2/10)"));
     }
 
     @Test
