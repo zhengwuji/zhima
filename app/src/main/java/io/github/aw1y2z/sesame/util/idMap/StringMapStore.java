@@ -69,7 +69,7 @@ class StringMapStore {
 
     /** 整份覆盖写回 */
     synchronized boolean save(String userId) {
-        return FileUtil.write2File(JsonUtil.toJsonString(idMap), fileProvider.apply(userId));
+        return FileUtil.write2FileIfChanged(JsonUtil.toJsonString(idMap), fileProvider.apply(userId));
     }
 
     synchronized void clear() {

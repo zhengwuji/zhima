@@ -72,7 +72,7 @@ public class AutoBlackListMap {
     }
 
     public static synchronized boolean save() {
-        return FileUtil.write2File(JsonUtil.toJsonString(idMap), FileUtil.getAutoBlackListMapFile());
+        return FileUtil.write2FileIfChanged(JsonUtil.toJsonString(idMap), FileUtil.getAutoBlackListMapFile());
     }
 
     public static synchronized void clear() {

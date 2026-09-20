@@ -56,6 +56,7 @@ import io.github.aw1y2z.sesame.R
 import io.github.aw1y2z.sesame.data.AppConfig
 import io.github.aw1y2z.sesame.data.RunType
 import io.github.aw1y2z.sesame.data.ViewAppInfo
+import io.github.aw1y2z.sesame.util.DebugServerAuth
 import io.github.aw1y2z.sesame.util.FileUtil
 import io.github.aw1y2z.sesame.util.LanguageUtil
 import io.github.aw1y2z.sesame.util.Log
@@ -319,19 +320,6 @@ class MiuixMainActivity : MiuixBaseActivity() {
             PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
         }
         packageManager.setComponentEnabledSetting(alias, newState, PackageManager.DONT_KILL_APP)
-    }
-
-    fun exportStatistics(): Uri? {
-        return FileUtil.getExportedStatisticsFile()?.let { Uri.fromFile(it) }
-    }
-
-    fun importStatistics(): Boolean {
-        val src = FileUtil.getExportedStatisticsFile()
-        if (src != null && FileUtil.copyTo(src, FileUtil.getStatisticsFile())) {
-            statisticsText = Statistics.getText(this)
-            return true
-        }
-        return false
     }
 
     override fun onPause() {
@@ -611,6 +599,46 @@ fun LogsTab(activity: MiuixMainActivity) {
             activity.broadcastReloadConfig()
             if (!it) FileUtil.clearLog("runtime")
         }
+    }
+    Spacer(Modifier.height(16.dp))
+
+    // ============ 调试服务（默认全关；令牌随机生成、端口默认随机、只监听回环） ============
+    SmallTitle(text = "调试服务")
+    CardColumn {
+        var debugServer by remember { mutableStateOf(AppConfig.INSTANCE.debugHttpServer ?: false) }
+        LogSwitchRow("本地调试 HTTP 服务", debugServer, onClick = {}) {
+            debugServer = it
+            AppConfig.INSTANCE.debugHttpServer = it
+            AppConfig.save()
+            activity.broadcastReloadConfig()
+        }
+        var debugRpc by remember { mutableStateOf(AppConfig.INSTANCE.debugRpcEnabled ?: false) }
+        LogSwitchRow("开放 /debugHandler", debugRpc, onClick = {}) {
+            debugRpc = it
+            AppConfig.INSTANCE.debugRpcEnabled = it
+            AppConfig.save()
+            activity.broadcastReloadConfig()
+        }
+        var debugExtra by remember { mutableStateOf(AppConfig.INSTANCE.debugExtraRoutes ?: false) }
+        LogSwitchRow("开放授权码/标记路由", debugExtra, onClick = {}) {
+            debugExtra = it
+            AppConfig.INSTANCE.debugExtraRoutes = it
+            AppConfig.save()
+            activity.broadcastReloadConfig()
+        }
+        ArrowPreference(title = "当前监听地址", summary = DebugServerAuth.describeEndpoint())
+        ArrowPreference(
+            title = "调试令牌（随机生成）",
+            summary = DebugServerAuth.getOrCreateToken()
+        )
+        Text(
+            text = "仅监听 127.0.0.1，需在请求头带 Authorization: Bearer <令牌>；" +
+                "从电脑访问请先 adb forward tcp:<端口> tcp:<端口>。" +
+                "令牌与端口也写在 sesame-M/debug_server.txt。",
+            fontSize = 12.sp,
+            color = MiuixTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
     }
     Spacer(Modifier.height(16.dp))
 }

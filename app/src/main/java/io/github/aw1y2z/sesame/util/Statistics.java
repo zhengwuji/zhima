@@ -146,7 +146,7 @@ public class Statistics {
             Log.i(TAG, "统计文件格式有误，已重置统计文件");
             try {
                 JsonUtil.copyMapper().updateValue(INSTANCE, new Statistics());
-                FileUtil.write2File(JsonUtil.toFormatJsonString(INSTANCE), FileUtil.getStatisticsFile());
+                FileUtil.write2FileIfChanged(JsonUtil.toFormatJsonString(INSTANCE), FileUtil.getStatisticsFile());
             }
             catch (JsonMappingException e) {
                 Log.printStackTrace(TAG, e);
@@ -176,7 +176,7 @@ public class Statistics {
             // 每次落盘都记一行会淹没有效日志（实测约 75 行/天），降为由「抓包记录」开关控制的调试日志
             Log.debug(TAG + ", 保存 statistics.json");
         }
-        FileUtil.write2File(JsonUtil.toFormatJsonString(INSTANCE), FileUtil.getStatisticsFile());
+        FileUtil.write2FileIfChanged(JsonUtil.toFormatJsonString(INSTANCE), FileUtil.getStatisticsFile());
     }
     
     public static Boolean updateDay(Calendar nowCalendar) {

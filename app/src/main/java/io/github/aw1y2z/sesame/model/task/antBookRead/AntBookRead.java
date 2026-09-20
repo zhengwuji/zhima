@@ -1,5 +1,7 @@
 package io.github.aw1y2z.sesame.model.task.antBookRead;
 
+import io.github.aw1y2z.sesame.util.Intervals;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import io.github.aw1y2z.sesame.data.ModelFields;
@@ -101,7 +103,7 @@ public class AntBookRead extends ModelTask {
                                 if (energy >= 150) {
                                     break;
                                 } else {
-                                    Thread.sleep(1500L);
+                                    Thread.sleep(Intervals.ANSWER_SUBMIT_WAIT_MS);
                                 }
                             }
                         }
@@ -153,9 +155,9 @@ public class AntBookRead extends ModelTask {
                                 String taskId = taskInfo.getString("taskId");
                                 for (int m = 0; m < 5; m++) {
                                     taskFinish(taskId, taskType);
-                                    Thread.sleep(1500L);
+                                    Thread.sleep(Intervals.ANSWER_SUBMIT_WAIT_MS);
                                     collectTaskPrize(taskId, taskType, title);
-                                    Thread.sleep(1500L);
+                                    Thread.sleep(Intervals.ANSWER_SUBMIT_WAIT_MS);
                                 }
                             } else if ("FOLLOW_UP".equals(taskType) || "JUMP".equals(taskType)) {
                                 String taskId = taskInfo.getString("taskId");

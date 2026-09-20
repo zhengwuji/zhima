@@ -713,7 +713,7 @@ public class Status {
             else {
                 JsonUtil.copyMapper().updateValue(INSTANCE, new Status());
                 Log.i(TAG, "初始化 status.json");
-                FileUtil.write2File(JsonUtil.toFormatJsonString(INSTANCE), FileUtil.getStatusFile(currentUid));
+                FileUtil.write2FileIfChanged(JsonUtil.toFormatJsonString(INSTANCE), FileUtil.getStatusFile(currentUid));
             }
         }
         catch (Throwable t) {
@@ -721,7 +721,7 @@ public class Status {
             Log.i(TAG, "状态文件格式有误，已重置");
             try {
                 JsonUtil.copyMapper().updateValue(INSTANCE, new Status());
-                FileUtil.write2File(JsonUtil.toFormatJsonString(INSTANCE), FileUtil.getStatusFile(currentUid));
+                FileUtil.write2FileIfChanged(JsonUtil.toFormatJsonString(INSTANCE), FileUtil.getStatusFile(currentUid));
             }
             catch (JsonMappingException e) {
                 Log.printStackTrace(TAG, e);
@@ -762,7 +762,7 @@ public class Status {
         long lastSaveTime = INSTANCE.saveTime;
         try {
             INSTANCE.saveTime = System.currentTimeMillis();
-            FileUtil.write2File(JsonUtil.toFormatJsonString(INSTANCE), FileUtil.getStatusFile(currentUid));
+            FileUtil.write2FileIfChanged(JsonUtil.toFormatJsonString(INSTANCE), FileUtil.getStatusFile(currentUid));
         }
         catch (Exception e) {
             INSTANCE.saveTime = lastSaveTime;

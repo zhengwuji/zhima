@@ -26,6 +26,13 @@ public class ConfigV2 {
 
     private final Map<String, ModelFields> modelFieldsMap = new ConcurrentHashMap<>();
 
+    /**
+     * 上次成功落盘的 JSON 内容（key 为 userId，空串代表默认配置）。
+     * <p>用于跳过"内容没变"的重复写盘与滚动备份：原实现在任务热路径上每次保存都要
+     * 读整份文件 + 全量序列化 + 全文比较，并且成功后再做一次全量滚动备份。
+     */
+    private static final Map<String, String> LAST_SAVED_JSON = new ConcurrentHashMap<>();
+
     public void setModelFieldsMap(Map<String, ModelFields> newModels) {
         modelFieldsMap.clear();
         Map<String, ModelConfig> modelConfigMap = ModelTask.getModelConfigMap();
@@ -116,6 +123,16 @@ public class ConfigV2 {
     }*/
 
     public static synchronized Boolean isModify(String userId) {
+        String formatted = INSTANCE.toSaveStr();
+        if (formatted == null) {
+            return true;
+        }
+        // 先在内存里比：与上次成功落盘的内容一致 → 直接判定"无改动"，
+        // 省掉原先每次都要做的一次整文件读取 + 全量序列化
+        String key = StringUtil.isEmpty(userId) ? "" : userId;
+        if (formatted.equals(LAST_SAVED_JSON.get(key))) {
+            return false;
+        }
         String json = null;
         File configV2File;
         if (StringUtil.isEmpty(userId)) {
@@ -127,32 +144,50 @@ public class ConfigV2 {
             json = FileUtil.readFromFile(configV2File);
         }
         if (json != null) {
-            String formatted = INSTANCE.toSaveStr();
-            return formatted == null || !formatted.equals(json);
+            return !formatted.equals(json);
         }
         return true;
     }
 
+    /**
+     * 保存配置。
+     *
+     * <p>性能：原实现每次都要「读整份文件 + 全量序列化 + 全文比较」，保存成功后还要无条件做一次
+     * 滚动备份（又一次全量写），而 {@code MessageUtil}、{@code AntForestV2}、{@code Status}
+     * 等任务热路径都会调用它，造成明显的写放大与耗电。现在：
+     * <ul>
+     *     <li>内容与上次成功落盘的一致时，既不写盘也不备份，直接返回（force 参数此时已无意义）；</li>
+     *     <li>写盘改走 {@link FileUtil#write2FileAtomic}（临时文件 + rename），避免半截 JSON；</li>
+     *     <li>只有内容真的变了才滚动备份。</li>
+     * </ul>
+     *
+     * @param userId 账号标识，空表示默认配置
+     * @param force 保留以兼容既有调用方；内容一致时不再有"强制写盘"语义
+     */
     public static Boolean save(String userId, Boolean force) {
-        if (!force) {
-            if (!isModify(userId)) {
-                return true;
-            }
-        }
         String json = INSTANCE.toSaveStr();
+        if (json == null) {
+            Log.error("配置序列化失败，跳过保存: " + userId);
+            return false;
+        }
+        String key = StringUtil.isEmpty(userId) ? "" : userId;
+        if (json.equals(LAST_SAVED_JSON.get(key))) {
+            return true;
+        }
         boolean success;
         if (StringUtil.isEmpty(userId)) {
             userId = "默认";
-            success = FileUtil.setDefaultConfigV2File(json);
+            success = FileUtil.write2FileAtomic(json, FileUtil.getDefaultConfigV2File());
         } else {
-            success = FileUtil.setConfigV2File(userId, json);
+            success = FileUtil.write2FileAtomic(json, FileUtil.getConfigV2File(userId));
         }
-        
-        // ========== 新增：保存成功后触发滚动备份 ==========
+
         if (success) {
+            LAST_SAVED_JSON.put(key, json);
+            // ========== 内容确实变化才滚动备份 ==========
             FileUtil.backupConfigV2WithRolling(userId);
         }
-        
+
         Log.record("保存配置: " + userId);
         return success;
     }
@@ -207,6 +242,8 @@ public class ConfigV2 {
             }
         }
         INSTANCE.setInit(true);
+        // 预热"上次落盘内容"缓存：刚加载完的配置不应被判为"有改动"而立刻写盘
+        LAST_SAVED_JSON.put(StringUtil.isEmpty(userId) ? "" : userId, INSTANCE.toSaveStr());
         Log.i(TAG, "加载配置结束");
         return INSTANCE;
     }

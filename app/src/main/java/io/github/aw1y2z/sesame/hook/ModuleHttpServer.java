@@ -20,7 +20,7 @@ public class ModuleHttpServer extends NanoHTTPD {
      * 无参构造方法（等效Kotlin默认参数：port=8080，secretToken=""）
      */
     public ModuleHttpServer() {
-        this(8080, "");
+        this(8080, "", false, false);
     }
     
     /**
@@ -28,26 +28,47 @@ public class ModuleHttpServer extends NanoHTTPD {
      * @param port 服务器端口
      */
     public ModuleHttpServer(int port) {
-        this(port, "");
+        this(port, "", false, false);
     }
     
     /**
      * 全参构造方法（对应Kotlin主构造器）
      * @param port 服务器端口
      * @param secretToken 秘钥令牌
+     * @deprecated 该重载不注册任何路由（服务空跑）；请使用带路由开关的构造器
      */
+    @Deprecated
     public ModuleHttpServer(int port, String secretToken) {
+        this(port, secretToken, false, false);
+    }
+    
+    /**
+     * 全参构造方法 + 路由开关。
+     *
+     * <p>安全：服务仅监听回环地址，且两条附加路由（原本不做鉴权）与任意 RPC 调试口默认都不注册，
+     * 必须由用户在模块设置里显式开启（见 {@code AppConfig.debugRpcEnabled / debugExtraRoutes}）。
+     *
+     * @param port 服务器端口
+     * @param secretToken 秘钥令牌（随机生成，见 {@code util.DebugServerAuth}）
+     * @param enableDebugRpc 是否注册 /debugHandler（可执行任意宿主 RPC，风险最高）
+     * @param enableExtraRoutes 是否注册 /getAlipayMiniMark 与 /getAuthCode
+     */
+    public ModuleHttpServer(int port, String secretToken, boolean enableDebugRpc, boolean enableExtraRoutes) {
         // 仅监听回环地址：避免同局域网内其他设备直接访问（原来绑 0.0.0.0 时，
         // /getAlipayMiniMark 与 /getAuthCode 两条路由不做鉴权，可被同网段任意设备调用）。
         // 本机调用不受影响；需要从电脑访问时用 adb forward tcp:8080 tcp:8080。
         super("127.0.0.1", port);
-        // 原Kotlin init块中的路由注册逻辑
-        register("/debugHandler", new DebugHandler(secretToken), "调试接口");
-        register("/getAlipayMiniMark", new AlipayMiniMarkHandler(), "获取支付宝小程序标记");
-        // 该路由依赖 AuthCodeHelper：它自建 Oauth2AuthCodeServiceImpl 实例、没走宿主依赖注入，
-        // 实例内的 Oauth2AuthCodeFacade 恒为 null，调用必然抛 NPE（当前支付宝版本下固定返回 500）。
-        // 保留路由本身，待改为「捕获宿主已注入的真实实例」后即可恢复；调用只在有人请求时才发生，闲置无日志。
-        register("/getAuthCode", new AuthCodeHandler(), "获取OAuth2授权码（当前宿主版本下不可用）");
+        if (enableDebugRpc) {
+            register("/debugHandler", new DebugHandler(secretToken), "调试接口（需令牌，可执行宿主 RPC）");
+        } else {
+            Log.i("调试接口 /debugHandler 未注册：debugRpcEnabled=false");
+        }
+        if (enableExtraRoutes) {
+            register("/getAlipayMiniMark", new AlipayMiniMarkHandler(secretToken), "获取支付宝小程序标记（需令牌）");
+            register("/getAuthCode", new AuthCodeHandler(secretToken), "获取OAuth2授权码（需令牌，当前宿主版本下不可用）");
+        } else {
+            Log.i("附加路由未注册：debugExtraRoutes=false");
+        }
     }
     
     /**

@@ -1,5 +1,7 @@
 package io.github.aw1y2z.sesame.model.task.goldenbeans;
 
+import io.github.aw1y2z.sesame.util.Intervals;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -165,7 +167,7 @@ public final class GoldenBeansSupport {
     /** 按操作间隔休眠，下限 200ms；线程中断时恢复中断标记 */
     public static void pause(int interval) {
         try {
-            Thread.sleep(Math.max(interval, 200));
+            Thread.sleep(Math.max(interval, Intervals.SHORT_BACKOFF_MS));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

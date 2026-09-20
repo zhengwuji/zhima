@@ -21,6 +21,7 @@ import android.os.Process;
 
 import io.github.aw1y2z.sesame.util.compat.XC_MethodHook;
 
+import io.github.aw1y2z.sesame.util.DebugServerAuth;
 import io.github.aw1y2z.sesame.util.XHelpers;
 import io.github.aw1y2z.sesame.util.compat.XC_LoadPackage;
 
@@ -134,6 +135,13 @@ public class ApplicationHook extends XposedModule {
     private static RpcVersion rpcVersion;
 
     private static PowerManager.WakeLock wakeLock;
+
+    /**
+     * 持锁上限：12 小时。
+     * <p>既保证长任务不被休眠打断，又避免异常路径漏掉 {@code release()} 时永久持锁耗电；
+     * 模块每日 0 点的定时唤醒会重建 handler 并重新取锁。
+     */
+    private static final long WAKE_LOCK_TIMEOUT_MS = 12 * 60 * 60 * 1000L;
 
     private static PendingIntent alarm0Pi;
 
@@ -532,6 +540,39 @@ public class ApplicationHook extends XposedModule {
         }
     }
 
+    /**
+     * 本地调试 HTTP 服务启动入口（安全默认值）：
+     * <ul>
+     *     <li>未在模块设置里开启 {@code debugHttpServer} 时不启动（默认关闭）；</li>
+     *     <li>令牌由 {@link DebugServerAuth} 随机生成并落盘，不再硬编码在源码里；</li>
+     *     <li>端口默认随机（20000~40000），实际端口写入 sesame-M/debug_server.txt；</li>
+     *     <li>服务只监听 127.0.0.1，且 /debugHandler 与两条附加路由各有独立开关、默认关闭。</li>
+     * </ul>
+     */
+    private static void startDebugHttpServerIfEnabled() {
+        try {
+            AppConfig config = AppConfig.INSTANCE;
+            if (!Boolean.TRUE.equals(config.getDebugHttpServer())) {
+                Log.record("调试 HTTP 服务未开启（模块设置 → 日志 → 调试服务）");
+                return;
+            }
+            Integer configuredPort = config.getDebugHttpServerPort();
+            String token = DebugServerAuth.getOrCreateToken();
+            int port = DebugServerAuth.resolvePort(configuredPort == null ? 0 : configuredPort);
+            boolean enableDebugRpc = Boolean.TRUE.equals(config.getDebugRpcEnabled());
+            boolean enableExtraRoutes = Boolean.TRUE.equals(config.getDebugExtraRoutes());
+            ModuleHttpServerManager.getInstance().startIfNeeded(port, token, enableDebugRpc, enableExtraRoutes,
+                    processName, "com.eg.android.AlipayGphone");
+            // 令牌与端口落盘（不打日志，避免运行日志被分享时泄露令牌）
+            DebugServerAuth.publishCredentials(token, port);
+            Log.record("调试 HTTP 服务已启动 127.0.0.1:" + port
+                    + "（debugRpc=" + enableDebugRpc + "，extraRoutes=" + enableExtraRoutes
+                    + "；令牌见 " + DebugServerAuth.CREDENTIAL_FILE_NAME + "）");
+        } catch (Throwable t) {
+            Log.printStackTrace("启动调试 HTTP 服务失败", t);
+        }
+    }
+
     @SuppressLint("WakelockTimeout")
     private synchronized Boolean initHandler(Boolean force) {
         if (service == null) {
@@ -557,8 +598,8 @@ public class ApplicationHook extends XposedModule {
                     return false;
                 }
 
-                //调用 startIfNeeded 方法，参数与 Kotlin 保持一致
-                ModuleHttpServerManager.getInstance().startIfNeeded(8080, "ET3vB^#td87sQqKaY*eMUJXP", processName, "com.eg.android.AlipayGphone");
+                // 调试 HTTP 服务：默认关闭，开启后随机令牌 + （默认）随机端口，仅监听 127.0.0.1
+                startDebugHttpServerIfEnabled();
 
                 UserIdMap.initUser(userId);
                 Model.initAllModel();
@@ -591,7 +632,8 @@ public class ApplicationHook extends XposedModule {
                     try {
                         PowerManager pm = (PowerManager) service.getSystemService(Context.POWER_SERVICE);
                         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, service.getClass().getName());
-                        wakeLock.acquire();
+                        // 带超时持锁，避免异常路径漏掉 release() 造成永久持锁（耗电）
+                        wakeLock.acquire(WAKE_LOCK_TIMEOUT_MS);
                     } catch (Throwable t) {
                         Log.printStackTrace(t);
                     }

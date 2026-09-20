@@ -1,5 +1,7 @@
 package io.github.aw1y2z.sesame.rpc.bridge;
 
+import io.github.aw1y2z.sesame.util.Intervals;
+
 import io.github.aw1y2z.sesame.util.XHelpers;
 import io.github.aw1y2z.sesame.entity.RpcEntity;
 import io.github.aw1y2z.sesame.hook.ApplicationHook;
@@ -176,7 +178,7 @@ public class NewRpcBridge implements RpcBridge {
                     }
                     if (retryInterval < 0) {
                         try {
-                            Thread.sleep(600 + RandomUtil.delay());
+                            Thread.sleep(Intervals.RPC_BASE_DELAY_MS + RandomUtil.delay());
                         } catch (InterruptedException e) {
                             Log.printStackTrace(e);
                         }
@@ -192,7 +194,7 @@ public class NewRpcBridge implements RpcBridge {
                     Log.printStackTrace(t);
                     if (retryInterval < 0) {
                         try {
-                            Thread.sleep(600 + RandomUtil.delay());
+                            Thread.sleep(Intervals.RPC_BASE_DELAY_MS + RandomUtil.delay());
                         } catch (InterruptedException e) {
                             Log.printStackTrace(e);
                         }
@@ -288,7 +290,7 @@ public class NewRpcBridge implements RpcBridge {
                     }
                     if (retryInterval < 0) {
                         try {
-                            Thread.sleep(600 + RandomUtil.delay());
+                            Thread.sleep(Intervals.RPC_BASE_DELAY_MS + RandomUtil.delay());
                         } catch (InterruptedException e) {
                             Log.printStackTrace(e);
                         }
@@ -304,7 +306,7 @@ public class NewRpcBridge implements RpcBridge {
                     Log.printStackTrace(t);
                     if (retryInterval < 0) {
                         try {
-                            Thread.sleep(600 + RandomUtil.delay());
+                            Thread.sleep(Intervals.RPC_BASE_DELAY_MS + RandomUtil.delay());
                         } catch (InterruptedException e) {
                             Log.printStackTrace(e);
                         }

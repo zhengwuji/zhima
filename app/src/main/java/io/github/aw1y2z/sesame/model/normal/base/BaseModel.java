@@ -109,7 +109,9 @@ public class BaseModel extends Model {
     }
     
     public static void initData() {
-        new Thread(() -> {
+        // 统一走共享线程池（TaskExecutor）：原先每次调用都新建裸线程，
+        // 线程无名、任务风暴时数量不可控、Runnable 里抛出的异常会被默认处理器吞掉
+        TaskExecutor.execute(() -> {
             try {
                 TimeUtil.sleep(5000);
                 ProtectEcology.initForest();
@@ -118,7 +120,7 @@ public class BaseModel extends Model {
             catch (Exception e) {
                 Log.printStackTrace(e);
             }
-        }).start();
+        });
     }
     
     public static void destroyData() {

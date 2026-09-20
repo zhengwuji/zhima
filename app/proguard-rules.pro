@@ -122,9 +122,36 @@
 -keep class io.github.aw1y2z.sesame.SesameApplication { *; }
 
 # ============================================================
-# 13. 通用：保留 Lombok 生成的 getter/setter（R8 可能误删）
+# 13. Lombok 生成的 getter/setter 保留（R8 可能误删）
+#     原规则写作 `class **`（全工程任何类），等于让 R8 无法删除/重命名任何类上的
+#     全部 get*/set* 方法，明显削弱压缩效果。这里收窄到真正需要它的位置：
+#     · data.**   —— Lombok + Jackson 序列化（配置模型、ModelField 体系）
+#     · entity.** —— Lombok DTO，需 Jackson 反序列化
+#     · util.Statistics / util.Status / util.NotificationUtil / util.idMap.UserIdMap
+#     其它 Lombok 类所在包（hook.** / model.** / ui.** / data.task.**）本就被整包 keep；
+#     rpc.intervallimit 由第 6 条、rpc.bridge 由第 6 条覆盖。
 # ============================================================
--keepclassmembers class ** {
+-keepclassmembers class io.github.aw1y2z.sesame.data.** {
+    public * get*();
+    public void set*(...);
+}
+-keepclassmembers class io.github.aw1y2z.sesame.entity.** {
+    public * get*();
+    public void set*(...);
+}
+-keepclassmembers class io.github.aw1y2z.sesame.util.Statistics {
+    public * get*();
+    public void set*(...);
+}
+-keepclassmembers class io.github.aw1y2z.sesame.util.Status {
+    public * get*();
+    public void set*(...);
+}
+-keepclassmembers class io.github.aw1y2z.sesame.util.NotificationUtil {
+    public * get*();
+    public void set*(...);
+}
+-keepclassmembers class io.github.aw1y2z.sesame.util.idMap.UserIdMap {
     public * get*();
     public void set*(...);
 }

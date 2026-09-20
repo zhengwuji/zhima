@@ -14,6 +14,7 @@ import io.github.aw1y2z.sesame.data.modelFieldExt.IntegerModelField;
 import io.github.aw1y2z.sesame.data.modelFieldExt.StringModelField;
 import io.github.aw1y2z.sesame.util.Log;
 import io.github.aw1y2z.sesame.util.StringUtil;
+import io.github.aw1y2z.sesame.util.TaskExecutor;
 import io.github.aw1y2z.sesame.util.ToastUtil;
 
 import java.util.List;
@@ -88,14 +89,15 @@ public class AnswerAI extends Model {
             return;
         }
         showToast("正在测试AI接口...");
-        new Thread(() -> {
+        // 走共享线程池（原为裸 new Thread）：网络请求最长可能读超时 180s，池里有界队列可防堆积
+        TaskExecutor.execute(() -> {
             String result = tempAI.getAnswerStr(AI_TEST_PROMPT);
             if (result == null || result.trim().isEmpty()) {
                 showToast("AI接口测试失败：地址/模型/令牌有误或请求超时（详见日志）");
                 return;
             }
             showToast("AI接口测试成功：" + trimForLog(result, AI_TEST_RESULT_MAX_LENGTH));
-        }).start();
+        });
     }
 
     /**

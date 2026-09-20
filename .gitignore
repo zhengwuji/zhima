@@ -1,6 +1,8 @@
 # Built application files
 *.apk
 *.ap_
+*.prof
+*.hprof
 
 # Files for the ART/Dalvik VM
 *.dex
@@ -41,8 +43,12 @@ captures/
 .idea/
 
 # Keystore files
-# Uncomment the following line if you do not want to check your keystore files in.
-#*.jks
+# 自用签名密钥库一律不入库：本地放 keystore/，CI 用 Secrets 注入（见 release.yml）
+keystore/
+*.jks
+*.keystore
+# 本地签名参数（含密码）同样不入库
+signing.properties
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild

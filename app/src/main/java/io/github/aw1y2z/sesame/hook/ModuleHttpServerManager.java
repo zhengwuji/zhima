@@ -38,6 +38,21 @@ public class ModuleHttpServerManager {
      */
     public synchronized void startIfNeeded(int port, String secretToken,
                                            String currentProcessName, String mainProcessName) {
+        startIfNeeded(port, secretToken, false, false, currentProcessName, mainProcessName);
+    }
+
+    /**
+     * 启动服务（如果尚未启动，同步方法保证线程安全）
+     * @param port 监听端口
+     * @param secretToken 鉴权令牌（随机生成，见 util.DebugServerAuth）
+     * @param enableDebugRpc 是否注册 /debugHandler
+     * @param enableExtraRoutes 是否注册两条附加路由
+     * @param currentProcessName 当前进程名
+     * @param mainProcessName 主进程包名
+     */
+    public synchronized void startIfNeeded(int port, String secretToken,
+                                           boolean enableDebugRpc, boolean enableExtraRoutes,
+                                           String currentProcessName, String mainProcessName) {
         // 1. 安全检查：仅主进程允许启动，避免多进程抢占端口
         if (currentProcessName == null || mainProcessName == null ||
             !currentProcessName.equals(mainProcessName)) {
@@ -54,7 +69,7 @@ public class ModuleHttpServerManager {
             stop(); // 先停止旧实例（如果存在）
             
             // 创建并启动新服务器
-            ModuleHttpServer newServer = new ModuleHttpServer(port, secretToken);
+            ModuleHttpServer newServer = new ModuleHttpServer(port, secretToken, enableDebugRpc, enableExtraRoutes);
             // 启动NanoHTTPD：参数1=读取超时，参数2=是否异步启动
             newServer.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
             

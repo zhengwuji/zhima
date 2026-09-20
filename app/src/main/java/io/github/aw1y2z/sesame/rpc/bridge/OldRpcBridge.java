@@ -1,5 +1,7 @@
 package io.github.aw1y2z.sesame.rpc.bridge;
 
+import io.github.aw1y2z.sesame.util.Intervals;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 import io.github.aw1y2z.sesame.data.RuntimeInfo;
@@ -123,7 +125,7 @@ public class OldRpcBridge implements RpcBridge {
                                     }
                                     if (retryInterval < 0) {
                                         try {
-                                            Thread.sleep(600 + RandomUtil.delay());
+                                            Thread.sleep(Intervals.RPC_BASE_DELAY_MS + RandomUtil.delay());
                                         } catch (InterruptedException e) {
                                             Log.printStackTrace(e);
                                         }
@@ -144,7 +146,7 @@ public class OldRpcBridge implements RpcBridge {
                                     }
                                     if (retryInterval < 0) {
                                         try {
-                                            Thread.sleep(600 + RandomUtil.delay());
+                                            Thread.sleep(Intervals.RPC_BASE_DELAY_MS + RandomUtil.delay());
                                         } catch (InterruptedException e) {
                                             Log.printStackTrace(e);
                                         }

@@ -1,5 +1,7 @@
 package io.github.aw1y2z.sesame.data.task;
 
+import io.github.aw1y2z.sesame.util.Intervals;
+
 import static io.github.aw1y2z.sesame.model.normal.base.BaseModel.taskRpcRequest;
 
 import android.os.Build;
@@ -215,7 +217,7 @@ public abstract class ModelTask extends Model {
                 if (ModelType.TASK == model.getType()) {
                     if (((ModelTask) model).startTask(force)) {
                         try {
-                            Thread.sleep(750);
+                            Thread.sleep(Intervals.TASK_LOOP_DELAY_MS);
                         } catch (InterruptedException e) {
                             Log.printStackTrace(e);
                         }

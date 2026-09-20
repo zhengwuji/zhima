@@ -88,7 +88,10 @@ public abstract class BaseTask {
             }
             stopTask();
         }
-        thread = new Thread(this::run);
+        // 保留独立 Thread（stopTask 依赖 interrupt/join 语义），但补上线程名与异常留痕：
+        // 原先是匿名裸线程，抓栈只能看到 "Thread-N"，且 run() 抛异常会被默认处理器吞掉
+        thread = new Thread(this::run, "Sesame-Task-" + getClass().getSimpleName());
+        thread.setUncaughtExceptionHandler((t, e) -> Log.err("BaseTask", "任务线程 " + t.getName() + " 异常:", e));
         try {
             if (check()) {
                 thread.start();

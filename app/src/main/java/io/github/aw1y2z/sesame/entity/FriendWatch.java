@@ -60,7 +60,7 @@ public class FriendWatch extends IdAndName {
 
     public static synchronized void save() {
         try {
-            FileUtil.write2File(joFriendWatch.toString(), FileUtil.getFriendWatchFile());
+            FileUtil.write2FileIfChanged(joFriendWatch.toString(), FileUtil.getFriendWatchFile());
         } catch (Exception e){
             Log.err(TAG, "friendWatch save err:", e);
         }
@@ -85,7 +85,7 @@ public class FriendWatch extends IdAndName {
                 }
                 joFriendWatch.put(id, joSingle);
             }
-            FileUtil.write2File(joFriendWatch.toString(), FileUtil.getFriendWatchFile());
+            FileUtil.write2FileIfChanged(joFriendWatch.toString(), FileUtil.getFriendWatchFile());
         } catch (Throwable th) {
             Log.err(TAG, "friendWatchNewWeek err:", th);
         }

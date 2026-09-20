@@ -3,6 +3,9 @@ package io.github.aw1y2z.sesame.hook;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.iki.elonen.NanoHTTPD;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -83,8 +86,20 @@ public abstract class BaseHandler implements io.github.aw1y2z.sesame.hook.HttpHa
             token = authHeader.trim();
         }
         
-        // 对比Token是否一致
-        return token.equals(secretToken);
+        // 对比Token是否一致（常量时间比较，避免按字节短路带来的时序侧信道）
+        return constantTimeEquals(token, secretToken);
+    }
+    
+    /**
+     * 常量时间字符串比较：长度不同直接失败，长度相同时逐字节异或累积，不做提前返回。
+     */
+    private static boolean constantTimeEquals(String actual, String expected) {
+        if (actual == null || expected == null) {
+            return false;
+        }
+        byte[] a = actual.getBytes(StandardCharsets.UTF_8);
+        byte[] b = expected.getBytes(StandardCharsets.UTF_8);
+        return MessageDigest.isEqual(a, b);
     }
     
     /**

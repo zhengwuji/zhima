@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  网络安全配置：
+  · base-config 保留 cleartext 许可，因为「AI 答」支持用户自填的自建/局域网 OpenAI 兼容网关（可能是 http）。
+    代码层面（CustomAI）默认只接受 https，需要明文时必须由用户在配置里显式打开开关。
+  · 对模块内置的第三方游戏服强制 TLS，避免该硬编码地址被降级到明文。
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">aslk2018.com</domain>
+    </domain-config>
+</network-security-config>

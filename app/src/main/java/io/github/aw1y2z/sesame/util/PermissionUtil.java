@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Environment;
 import android.os.PowerManager;
 import android.provider.Settings;
 import androidx.appcompat.app.AppCompatActivity;
@@ -29,19 +28,21 @@ public class PermissionUtil {
     }
 
     public static boolean checkFilePermissions(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            //判断是否有管理外部存储的权限
-            return Environment.isExternalStorageManager();
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        // Android 10（API 29）起为 scoped storage：模块只读写自己的专属外部目录
+        // （Android/media/<宿主包名>/sesame-M）与导出目录，不需要任何存储权限，
+        // manifest 中也已不再申请"所有文件访问"（MANAGE_EXTERNAL_STORAGE）。
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            return true;
+        }
+        // Android 9 及以下写外部目录仍需运行时权限（manifest 中已带 maxSdkVersion=28）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             for (String permission : PERMISSIONS_STORAGE) {
                 if (context.checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
                     return false;
                 }
             }
-            return true;
-        } else {
-            return true;
         }
+        return true;
     }
 
     public static Boolean checkOrRequestFilePermissions(AppCompatActivity activity) {
@@ -49,20 +50,8 @@ public class PermissionUtil {
             if (checkFilePermissions(activity)) {
                 return true;
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                //跳转到权限页，请求权限
-                Intent appIntent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                appIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                appIntent.setData(Uri.parse("package:" + activity.getPackageName()));
-                //appIntent.setData(Uri.fromParts("package", activity.getPackageName(), null));
-                try {
-                    activity.startActivity(appIntent);
-                } catch (ActivityNotFoundException ex) {
-                    Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
-                    intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                    activity.startActivity(intent);
-                }
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // 只有 Android 6~9 需要申请；Android 10+ 无需权限，也不会再跳"所有文件访问"设置页
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                 activity.requestPermissions(PERMISSIONS_STORAGE, REQUEST_EXTERNAL_STORAGE);
             }
         } catch (Exception e) {

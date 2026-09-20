@@ -37,6 +37,30 @@ public class AppConfig {
     private Boolean enableViewRuntimeLog = true;
     private Boolean batteryPerm = true;
 
+    // ============ 本地调试 HTTP 服务（默认全关，需要时在"日志"页手动开启） ============
+    // 安全背景见 util/DebugServerAuth：令牌随机生成并落盘，端口可随机，服务只监听 127.0.0.1
+
+    /** 是否启动本地调试 HTTP 服务（默认关闭） */
+    private Boolean debugHttpServer = false;
+    /** 调试服务端口；0（默认）表示随机 20000~40000，实际端口写入 sesame-M/debug_server.txt */
+    private Integer debugHttpServerPort = 0;
+    /** 是否开放 /debugHandler：可执行任意宿主 RPC，风险最高，默认关闭 */
+    private Boolean debugRpcEnabled = false;
+    /** 是否开放 /getAlipayMiniMark 与 /getAuthCode 两条附加路由，默认关闭 */
+    private Boolean debugExtraRoutes = false;
+
+    public Boolean getDebugHttpServer() { return debugHttpServer; }
+    public void setDebugHttpServer(Boolean value) { debugHttpServer = value; }
+
+    public Integer getDebugHttpServerPort() { return debugHttpServerPort; }
+    public void setDebugHttpServerPort(Integer value) { debugHttpServerPort = value; }
+
+    public Boolean getDebugRpcEnabled() { return debugRpcEnabled; }
+    public void setDebugRpcEnabled(Boolean value) { debugRpcEnabled = value; }
+
+    public Boolean getDebugExtraRoutes() { return debugExtraRoutes; }
+    public void setDebugExtraRoutes(Boolean value) { debugExtraRoutes = value; }
+
     public Boolean getLanguageSimplifiedChinese() {
         return languageSimplifiedChinese;
     }

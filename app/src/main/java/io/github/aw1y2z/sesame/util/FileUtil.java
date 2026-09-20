@@ -25,6 +25,8 @@ public class FileUtil {
     
     // 备份相关配置（可根据需求调整n值，比如n=3则A/B/C循环）
     private static int BACKUP_MAX_COUNT = 5; // 配置读取失败时的默认值
+    /** {@link #write2FileIfChanged} 的上次写入内容缓存（key = 文件绝对路径） */
+    private static final java.util.Map<String, String> LAST_WRITTEN_CONTENT = new java.util.concurrent.ConcurrentHashMap<>();
     private static final String BACKUP_DIR_NAME = "bak"; // 备份子目录名
     public static final String BACKUP_FILE_PREFIX = "config_v2_";
     public static final String BACKUP_FILE_EXT = ".json";
@@ -520,14 +522,22 @@ public class FileUtil {
         return getFile(MAIN_DIRECTORY_FILE, "AntMemberTask.json");
     }
     
-    public static File getExportedStatisticsFile() {
-        String storageDirStr = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + File.separator + CONFIG_DIRECTORY_NAME;
-        File storageDir = new File(storageDirStr);
-        if (!storageDir.exists()) {
-            storageDir.mkdirs();
+    /**
+     * 导出目录：模块专属外部目录下的 export/。
+     * <p>历史实现会往公共 Download/sesame-M 写，Android 10 起那样做需要"所有文件访问"
+     * （MANAGE_EXTERNAL_STORAGE）权限；现在统一落在应用专属目录，任何版本都不需要额外权限，
+     * 需要分享时走已有的 FileProvider（见 provider_paths.xml）。
+     */
+    private static File getExportDirectoryFile() {
+        File exportDir = new File(MAIN_DIRECTORY_FILE, "export");
+        if (!exportDir.exists()) {
+            exportDir.mkdirs();
         }
-        File exportedStatisticsFile = getFile(storageDir, "statistics.json");
-        return exportedStatisticsFile;
+        return exportDir;
+    }
+    
+    public static File getExportedStatisticsFile() {
+        return getFile(getExportDirectoryFile(), "statistics.json");
     }
     
     public static File getFriendWatchFile() {
@@ -543,12 +553,10 @@ public class FileUtil {
     }
     
     public static File exportFile(File file) {
-        String exportDirStr = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + File.separator + CONFIG_DIRECTORY_NAME;
-        File exportDir = new File(exportDirStr);
-        if (!exportDir.exists()) {
-            exportDir.mkdirs();
+        if (file == null || !file.exists()) {
+            return null;
         }
-        File exportFile = getFile(exportDir, file.getName());
+        File exportFile = getFile(getExportDirectoryFile(), file.getName());
         if (FileUtil.copyTo(file, exportFile)) {
             return exportFile;
         }
@@ -709,6 +717,58 @@ public class FileUtil {
         return success;
     }
     
+    /**
+     * 原子写：先写同目录临时文件再 rename 覆盖，避免"写一半被系统杀掉/掉电"留下半截 JSON
+     * （半截配置会让下次加载解析失败）。rename 在同一文件系统内是原子操作；
+     * rename 不被支持时回退为直接覆盖写，并清理临时文件。
+     */
+    public static boolean write2FileAtomic(String s, File f) {
+        File parent = f.getParentFile();
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs();
+        }
+        if (parent == null) {
+            return write2File(s, f);
+        }
+        File tmp = new File(parent, f.getName() + ".tmp");
+        if (!write2File(s, tmp)) {
+            return false;
+        }
+        if (f.exists()) {
+            f.delete();
+        }
+        if (tmp.renameTo(f)) {
+            return true;
+        }
+        boolean ok = write2File(s, f);
+        tmp.delete();
+        return ok;
+    }
+
+    /**
+     * 内容未变则不写盘的原子写。
+     *
+     * <p>用于 statistics.json / friendWatch.json / 各 idMap 这类"任务循环里被反复 save"的小 JSON：
+     * 原实现每次都会做一次完整序列化 + 完整文件覆盖写，实测一天上百次，属明显的写放大与耗电来源。
+     * 内部按文件路径缓存上次写入内容；文件被删掉时缓存自动失效（会照常写）。
+     *
+     * @return 与 {@link #write2File} 一致：内容未变或写成功都返回 true
+     */
+    public static boolean write2FileIfChanged(String s, File f) {
+        if (f == null) {
+            return false;
+        }
+        String key = f.getAbsolutePath();
+        if (s != null && f.exists() && s.equals(LAST_WRITTEN_CONTENT.get(key))) {
+            return true;
+        }
+        boolean success = write2FileAtomic(s, f);
+        if (success) {
+            LAST_WRITTEN_CONTENT.put(key, s);
+        }
+        return success;
+    }
+
     public static boolean append2File(String s, File f) {
         if (f.exists() && !f.canWrite()) {
             try {

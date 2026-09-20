@@ -1,5 +1,7 @@
 package io.github.aw1y2z.sesame.hook;
 
+import io.github.aw1y2z.sesame.util.Intervals;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.res.Resources;
@@ -73,7 +75,7 @@ public abstract class BaseCaptchaHandler {
             }
             Log.record("滑动验证🆘发现滑动验证文本:" + slideTextInDialog.getText()+"");
             try {
-                Thread.sleep(500L); // 等待界面稳定
+                Thread.sleep(Intervals.UI_SETTLE_MS); // 等待界面稳定
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 Log.record("滑动验证🆘等待界面稳定时被中断: " + e);
